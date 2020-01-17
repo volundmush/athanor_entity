@@ -1,13 +1,14 @@
 from django.conf import settings
+
 from evennia.utils.utils import class_from_module
-from athanor_entity.entities.base import AthanorGameEntity
+from athanor.gamedb.objects import AthanorObject
 
 MIXINS = []
 
-for mixin in settings.MIXINS["ENTITY_MOBILE"]:
+for mixin in settings.MIXINS["ENTITY_STRUCTURE"]:
     MIXINS.append(class_from_module(mixin))
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AthanorMobile(*MIXINS, AthanorGameEntity):
+class AthanorStructure(*MIXINS, AthanorObject):
     pass

@@ -3,11 +3,11 @@ from evennia.utils.utils import class_from_module
 from evennia.commands import cmdset
 from evennia.objects.objects import ExitCommand
 
-from athanor.entities.base import AbstractMapEntity
+from athanor_entity.entities.base import AbstractMapEntity
 
 MIXINS = []
 
-for mixin in settings.MIXINS["EXIT"]:
+for mixin in settings.MIXINS["ENTITY_EXIT"]:
     MIXINS.append(class_from_module(mixin))
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 

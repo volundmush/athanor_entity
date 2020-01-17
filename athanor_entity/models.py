@@ -35,6 +35,4 @@ class GameLocations(models.Model):
     z_coordinate = models.FloatField(null=True)
 
     class Meta:
-        unique_together = (('object', 'name'),)
-
-
+        unique_together = (('object', 'name'), )

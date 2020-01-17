@@ -233,7 +233,7 @@ class MapHandler(object):
         if not hasattr(self.owner, 'map_bridge'):
             raise ValueError(f"{self.owner} does not support an internal map!")
         bri = self.owner.map_bridge
-        if not (plugin := GLOBAL_SCRIPTS.plugin.ndb.plugins.get(bri.plugin, None)):
+        if not (plugin := GLOBAL_SCRIPTS.entity.ndb.plugins.get(bri.plugin, None)):
             raise ValueError(f"Cannot load {self.owner} map data: {bri.plugin} extension not found.")
         if not (inst := plugin.maps.get(bri.map_key, None)):
             raise ValueError(
@@ -279,7 +279,7 @@ class LocationHandler(object):
 
     def set(self, room, save=True):
         if isinstance(room, str):
-            room = GLOBAL_SCRIPTS.plugin.resolve_room_path(room)
+            room = GLOBAL_SCRIPTS.entity.resolve_room_path(room)
         if room and not hasattr(room, 'map'):
             return
             # raise ValueError(f"{room} is not a valid location for a game entity.")

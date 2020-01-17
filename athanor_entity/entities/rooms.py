@@ -1,10 +1,10 @@
 from django.conf import settings
 from evennia.utils.utils import class_from_module
-from athanor.entities.base import AbstractMapEntity
+from athanor_entity.entities.base import AbstractMapEntity
 
 MIXINS = []
 
-for mixin in settings.MIXINS["ROOM"]:
+for mixin in settings.MIXINS["ENTITY_ROOM"]:
     MIXINS.append(class_from_module(mixin))
 MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 

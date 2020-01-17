@@ -14,9 +14,9 @@ from evennia.commands import cmdhandler
 from evennia.objects.objects import ObjectSessionHandler
 
 from athanor.utils.mixins import HasLocks, HasInventory
-from athanor.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler
-from athanor.entities.handlers import LocationHandler, MapHandler
-from athanor.entities.handlers import FactionHandler, AllianceHandler, DivisionHandler
+from athanor_entity.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler
+from athanor_entity.entities.handlers import LocationHandler, MapHandler
+from athanor_entity.entities.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
 from athanor.utils.time import utcnow
 from athanor.utils.text import partial_match
@@ -28,26 +28,26 @@ _PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 BASE_MIXINS = []
 
-for mixin in settings.MIXINS["BASE"]:
+for mixin in settings.MIXINS["ENTITY_BASE"]:
     BASE_MIXINS.append(class_from_module(mixin))
 BASE_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
 ENTITY_MIXINS = []
 
-for mixin in settings.MIXINS["ENTITY"]:
+for mixin in settings.MIXINS["ENTITY_ENTITY"]:
     ENTITY_MIXINS.append(class_from_module(mixin))
 ENTITY_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
 MAPENT_MIXINS = []
 
-for mixin in settings.MIXINS["MAPENT"]:
+for mixin in settings.MIXINS["ENTITY_MAPENT"]:
     MAPENT_MIXINS.append(class_from_module(mixin))
 MAPENT_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
-class AbstractGameEntity(*BASE_MIXINS, HasInventory):
+class BaseGameEntity(*BASE_MIXINS, HasInventory):
     """
     This class is not meant to be used directly. It forms the foundation for Athanor's Entity system,
     providing new Handlers and additional hook and logics for use by both Athanor Entities and Athanor sub-classes
@@ -58,6 +58,7 @@ class AbstractGameEntity(*BASE_MIXINS, HasInventory):
 
     This has nothing that DefaultObject already implements, only stuff that must be ADDED to it.
     """
+    mixin_priority = -10000000000
     persistent = False
     re_search = re.compile(r"^(?i)(?P<choice>(all|[0-9]+)\.)?(?P<search>.*)?")
 
@@ -361,8 +362,84 @@ class AbstractGameEntity(*BASE_MIXINS, HasInventory):
     def location(self, value):
         self.locations.set(value)
 
+    def at_pre_puppet(self, account, session=None, **kwargs):
+        """
+        Return the character from storage in None location in `at_post_unpuppet`.
+        Args:
+            account (Account): This is the connecting account.
+            session (Session): Session controlling the connection.
+        """
+        # Make sure character's location is never None before being puppeted.
+        # Return to last location (or home, which should always exist),
+        if not self.location:
+            try:
+                self.locations.recall()
+            except ValueError as e:
+                self.location = settings.ENTITY_START_LOCATION
 
-class AthanorGameEntity(*ENTITY_MIXINS, HasLocks, AbstractGameEntity):
+    def at_post_puppet(self, **kwargs):
+        """
+        Called just after puppeting has been completed and all
+        Account<->Object links have been established.
+
+        Args:
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+        Note:
+            You can use `self.account` and `self.sessions.get()` to get
+            account and sessions at this point; the last entry in the
+            list from `self.sessions.get()` is the latest Session
+            puppeting this Object.
+
+        """
+        self.msg("\nYou become |c%s|n.\n" % self.name)
+        self.msg((self.at_look(self.location), {"type": "look"}), options=None)
+
+        def message(obj, from_obj):
+            obj.msg(
+                "%s has entered the game." % self.get_display_name(obj),
+                from_obj=from_obj,
+            )
+
+        self.location.for_contents(message, exclude=[self], from_obj=self)
+
+    def at_post_unpuppet(self, account, session=None, **kwargs):
+        """
+        We stove away the character when the account goes ooc/logs off,
+        otherwise the character object will remain in the room also
+        after the account logged off ("headless", so to say).
+
+        Args:
+            account (Account): The account object that just disconnected
+                from this object.
+            session (Session): Session controlling the connection that
+                just disconnected.
+            **kwargs (dict): Arbitrary, optional arguments for users
+                overriding the call (unused by default).
+        """
+        if not self.sessions.count():
+            # only remove this char from grid if no sessions control it anymore.
+            if self.location:
+
+                def message(obj, from_obj):
+                    obj.msg(
+                        "%s has left the game." % self.get_display_name(obj),
+                        from_obj=from_obj,
+                    )
+
+                self.location.for_contents(message, exclude=[self], from_obj=self)
+                self.locations.save()
+                self.location = None
+
+    def at_server_reload(self):
+        self.locations.save()
+
+    def contents_get(self, exclude=None):
+        if not exclude:
+            return self.contents
+        return list(set(self.contents) - set(make_iter(exclude)))
+
+class AthanorGameEntity(*ENTITY_MIXINS, HasLocks, BaseGameEntity):
     """
     This class builds on AbstractGameEntity, re-implementing much of DefaultObject's features.
     """
@@ -428,14 +505,6 @@ class AthanorGameEntity(*ENTITY_MIXINS, HasLocks, AbstractGameEntity):
     @date_created.setter
     def date_created(self, value):
         self.db_date_created = value
-
-    def contents_get(self, exclude=None):
-        contents = self.contents
-        if exclude:
-            for entity in make_iter(exclude):
-                if entity in contents:
-                    contents.remove(entity)
-        return contents
 
     def get_display_name(self, looker, **kwargs):
         return self.name
