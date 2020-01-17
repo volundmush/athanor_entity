@@ -7,14 +7,13 @@ from evennia.utils.utils import time_format, logger, lazy_property, make_iter, t
 from evennia.utils.utils import class_from_module
 from evennia.utils.ansi import ANSIString
 from evennia.commands.cmdsethandler import CmdSetHandler
-from evennia.locks.lockhandler import LockHandler
 from evennia.typeclasses.tags import Tag, TagHandler, AliasHandler, PermissionHandler
-from evennia.objects.objects import _INFLECT
+from evennia.objects.objects import _INFLECT, ObjectSessionHandler
 from evennia.commands import cmdhandler
-from evennia.objects.objects import ObjectSessionHandler
 
-from athanor.utils.mixins import HasLocks, HasInventory
-from athanor_entity.entities.handlers import GearHandler, ItemHandler, AspectHandler, KeywordHandler
+from athanor.utils.mixins import HasLocks
+from athanor_entity.mixins.abstract import HasInventory
+from athanor_entity.entities.handlers import GearHandler, AspectHandler, KeywordHandler
 from athanor_entity.entities.handlers import LocationHandler, MapHandler
 from athanor_entity.entities.handlers import FactionHandler, AllianceHandler, DivisionHandler
 from athanor.utils.color import green_yellow_red, red_yellow_green
@@ -23,27 +22,16 @@ from athanor.utils.text import partial_match
 
 from django.utils.translation import ugettext as _
 
-_PERMISSION_HIERARCHY = [p.lower() for p in settings.PERMISSION_HIERARCHY]
 
 
-BASE_MIXINS = []
 
-for mixin in settings.MIXINS["ENTITY_BASE"]:
-    BASE_MIXINS.append(class_from_module(mixin))
+BASE_MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["ENTITY_BASE"]]
 BASE_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-
-ENTITY_MIXINS = []
-
-for mixin in settings.MIXINS["ENTITY_ENTITY"]:
-    ENTITY_MIXINS.append(class_from_module(mixin))
+ENTITY_MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["ENTITY_ENTITY"]]
 ENTITY_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
-
-MAPENT_MIXINS = []
-
-for mixin in settings.MIXINS["ENTITY_MAPENT"]:
-    MAPENT_MIXINS.append(class_from_module(mixin))
+MAPENT_MIXINS = [class_from_module(mixin) for mixin in settings.MIXINS["ENTITY_MAPENT"]]
 MAPENT_MIXINS.sort(key=lambda x: getattr(x, "mixin_priority", 0))
 
 
@@ -58,9 +46,8 @@ class BaseGameEntity(*BASE_MIXINS, HasInventory):
 
     This has nothing that DefaultObject already implements, only stuff that must be ADDED to it.
     """
-    mixin_priority = -10000000000
     persistent = False
-    re_search = re.compile(r"^(?i)(?P<choice>(all|[0-9]+)\.)?(?P<search>.*)?")
+    re_search = re.compile(r"^(?i)(?P<choice>(all|[0-9]+)\.)?(?P<search>.*)")
 
     @lazy_property
     def locations(self):
@@ -552,12 +539,6 @@ class AthanorGameEntity(*ENTITY_MIXINS, HasLocks, BaseGameEntity):
         __cmdset_storage_get, __cmdset_storage_set, __cmdset_storage_del
     )
 
-    @lazy_property
-    def locks(self):
-        return LockHandler(self)
-
-
-
     @property
     def contents(self):
         return self.items.all() + list(self.entities) + list(self.exits)
@@ -585,66 +566,6 @@ class AthanorGameEntity(*ENTITY_MIXINS, HasLocks, BaseGameEntity):
     @lazy_property
     def permissions(self):
         return PermissionHandler(self)
-
-    def access(
-        self, accessing_obj, access_type="read", default=False, no_superuser_bypass=False, **kwargs
-    ):
-        """
-        Determines if another object has permission to access this one.
-
-        Args:
-            accessing_obj (str): Object trying to access this one.
-            access_type (str, optional): Type of access sought.
-            default (bool, optional): What to return if no lock of
-                access_type was found
-            no_superuser_bypass (bool, optional): Turn off the
-                superuser lock bypass (be careful with this one).
-
-        Kwargs:
-            kwargs (any): Ignored, but is there to make the api
-                consistent with the object-typeclass method access, which
-                use it to feed to its hook methods.
-
-        """
-        return self.locks.check(
-            accessing_obj,
-            access_type=access_type,
-            default=default,
-            no_superuser_bypass=no_superuser_bypass,
-        )
-
-    def check_permstring(self, permstring):
-        if hasattr(self, "account"):
-            if (
-                    self.account
-                    and self.account.is_superuser
-                    and not self.account.attributes.get("_quell")
-            ):
-                return True
-        else:
-            if self.is_superuser and not self.attributes.get("_quell"):
-                return True
-
-        if not permstring:
-            return False
-        perm = permstring.lower()
-        perms = [p.lower() for p in self.permissions.all()]
-        if perm in perms:
-            # simplest case - we have a direct match
-            return True
-        if perm in _PERMISSION_HIERARCHY:
-            # check if we have a higher hierarchy position
-            ppos = _PERMISSION_HIERARCHY.index(perm)
-            return any(
-                True
-                for hpos, hperm in enumerate(_PERMISSION_HIERARCHY)
-                if hperm in perms and hpos > ppos
-            )
-        # we ignore pluralization (english only)
-        if perm.endswith("s"):
-            return self.check_permstring(perm[:-1])
-
-        return False
 
     @property
     def is_superuser(self):
