@@ -1,0 +1,26 @@
+limbo_room:
+  name: Limbo
+  description: An empty white void in the middle of nowhere. Kinda boring, really.
+  templates: base
+  mobiles:
+    - old_man
+---
+northern_limbo:
+  name: Northern Limbo
+  description: Here everything is red. Because I said so.
+  templates: base
+---
+southern_limbo:
+  name: Southern Limbo
+  description: Here everything is purple. Because I said so.
+  templates: base
+---
+eastern_limbo:
+  name: Eastern Limbo
+  description: Enjoy some pagodas and torii gates and so on?
+  templates: base
+---
+western_limbo:
+  name: Western Limbo
+  description: Ride 'em cowboy!
+  templates: base

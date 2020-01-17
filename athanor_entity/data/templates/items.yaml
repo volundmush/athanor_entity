@@ -1,0 +1,8 @@
+adventurer_sword:
+  name: Adventurer's Sword
+  targeting:
+    - adventurer
+    - sword
+  description: A plain short sword. The blade is finely polished.
+  short: An adventurer's sword
+  action: is cast aside here.

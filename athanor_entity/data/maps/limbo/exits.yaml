@@ -1,0 +1,21 @@
+limbo_room:
+  northern_limbo:
+    templates: n
+  southern_limbo:
+    templates: s
+  eastern_limbo:
+    templates: e
+  western_limbo:
+    templates: w
+northern_limbo:
+  limbo_room:
+    templates: s
+southern_limbo:
+  limbo_room:
+    templates: n
+eastern_limbo:
+  limbo_room:
+    templates: w
+western_limbo:
+  limbo_room:
+    templates: e

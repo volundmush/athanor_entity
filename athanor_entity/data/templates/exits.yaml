@@ -1,0 +1,74 @@
+base:
+  locks: "traverse:all();puppet:false();get:false();call:all()"
+n:
+  name: North
+  templates:
+    - base
+  aliases:
+    - n
+s:
+  name: South
+  templates:
+    - base
+  aliases:
+    - s
+e:
+  name: East
+  templates:
+    - base
+  aliases:
+    - e
+w:
+  name: West
+  templates:
+    - base
+  aliases:
+    - w
+ne:
+  name: Northeast
+  templates:
+    - base
+  aliases:
+    - ne
+nw:
+  name: Northwest
+  templates:
+    - base
+  aliases:
+    - nw
+se:
+  name: Southeast
+  templates:
+    - base
+  aliases:
+    - se
+sw:
+  name: Southwest
+  templates:
+    - base
+  aliase:
+    - sw
+u:
+  name: Up
+  templates:
+    - base
+  aliases:
+    - u
+d:
+  name: Down
+  templates:
+    - base
+  aliases:
+    - d
+i:
+  name: In
+  templates:
+    - base
+  aliases:
+    - i
+o:
+  name: Out
+  templates:
+    - base
+  aliases:
+    - o
